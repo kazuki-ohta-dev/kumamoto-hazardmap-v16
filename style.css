@@ -213,7 +213,7 @@ textarea.field{min-height:80px;resize:vertical;line-height:1.6}
 .cardimg{width:100%;height:auto;display:block;border:1px solid var(--gray-420);border-radius:8px;margin:16px 0 8px}
 .cardlist{list-style:none;margin:0;padding:0}
 .cardlist li{padding:12px 0;border-bottom:1px solid var(--gray-420);display:flex;gap:8px;align-items:center}
-.cardlist li .meta{flex:1;min-width:0;line-height:1.5}
+.cardlist li .meta{flex:1;min-width:0;line-height:1.5;display:flex;gap:20px;}
 .cardlist li b{font-size:16px}
 .cardlist li small{display:block;color:var(--gray-700);font-size:14px}
 .empty{color:var(--gray-700);font-size:16px;border:1px solid var(--gray-420);border-radius:8px;padding:16px;margin-top:16px}

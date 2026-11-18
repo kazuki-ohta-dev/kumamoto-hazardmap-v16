@@ -1467,7 +1467,7 @@ async function openCards(focusId) {
   const body = $('#cardBody'), own = ownCards(), recv = cards.filter(x => x.kind === 'recv');
   const card = focusId ? cards.find(c => c.id === focusId) : null;
   if (!card) {
-    const row = c => `<li class="cardrow" data-open="${c.id}"><div class="meta"><b>${esc(c.name)}</b><small>${esc(cardKindLabel(c))}<br>${c.kind === 'recv' ? t('{0}に受け取り', dateJa(c.received || c.created)) : t(c.updated ? '{0}に更新' : '{0}につくった', dateJa(c.updated || c.created))}</small></div><span class="chev" aria-hidden="true"></span></li>`;
+    const row = c => `<li class="cardrow" data-open="${c.id}"><div class="meta"><div><b>${esc(c.name)}</b><small>${esc(cardKindLabel(c))}<br>${c.kind === 'recv' ? t('{0}に受け取り', dateJa(c.received || c.created)) : t(c.updated ? '{0}に更新' : '{0}につくった', dateJa(c.updated || c.created))}</small></div><button class="btn-sub">${t('ナビを始める')}</button></div><span class="chev" aria-hidden="true"></span></li>`;
     body.innerHTML = `
       <h3 class="sec">${t('自分のカード')}</h3>
       ${own.length ? `<ul class="cardlist">${own.map(row).join('')}</ul>` : `<p class="res-note">${t('まだありません<br>自宅の場所・避難先・逃げ始めるときを決めると家族に送れるカードができます')}</p>`}
@@ -1475,7 +1475,13 @@ async function openCards(focusId) {
       <h3 class="sec">${t('受け取ったカード')}</h3>
       ${recv.length ? `<ul class="cardlist">${recv.map(row).join('')}</ul>` : `<p class="res-note">${t('家族から送られたリンクを開くとここに保存できます')}</p>`}
       <p class="panel-note">${t('カードはこのスマホの中だけに保存されています<br>機種変更に備えて　自分のカードのリンクを自分あてにも送っておくと元に戻せます')}</p>`;
-    body.querySelectorAll('[data-open]').forEach(li => li.onclick = () => openCards(li.dataset.open));
+    body.querySelectorAll('[data-open]').forEach(li => {
+        li.querySelector('.btn-sub').onclick = (e) => {
+            e.stopPropagation();
+            launchNavi(li.dataset.open);
+        };
+        li.onclick = () => openCards(li.dataset.open);
+    });
     $('#cNew').onclick = () => startCardFlow(meMarker ? meMarker.getLatLng() : map.getCenter());
     $('#cardPanel').scrollTop = 0;
     return;
@@ -1502,6 +1508,7 @@ async function openCards(focusId) {
     <p class="share-note">${t(isRecv ? 'カードとリンクにはこの場所の位置が入っています<br>家族など知っている人だけに送ってください' : 'カードとリンクには自宅の位置が入っています<br>家族など知っている人だけに送ってください')}</p>
     <button class="btn-line" id="cShare">${t('家族に送る')}</button>
     <button class="btn-line" id="cCopy">${t('経路のリンクをコピーする')}</button>
+    <button class="btn-line" id="cLaunchNavi">${t('ナビを始める')}</button>
     ${canShareFile ? '' : `<p class="res-note">${t('画像は長押しで保存できます')}</p>`}
     ${isRecv ? '' : `<details class="more" id="cAdd"><summary><span>${t('書き足す')}</span><small>${t('ひとこと・待つ場所')}</small></summary>
       <label class="lbl" for="cMsg">${t('家族へのひとこと')}</label><textarea class="field" id="cMsg" maxlength="60" placeholder="${t('例　先に着いたらLINEで「着いた」と送る')}">${esc(card.msg || '')}</textarea>
@@ -1523,6 +1530,7 @@ async function openCards(focusId) {
     else navigator.clipboard?.writeText(text).then(() => toast(t('送る文をコピーしました\nLINEに貼りつけてください')));
   };
   $('#cCopy').onclick = () => navigator.clipboard?.writeText(link).then(() => toast(t('リンクをコピーしました'))).catch(() => toast(t('コピーできませんでした')));
+  $('#cLaunchNavi').onclick = () => launchNavi(card.id);
   if ($('#cAddSave')) $('#cAddSave').onclick = () => { card.msg = $('#cMsg').value.trim(); card.meet = $('#cMeet').value.trim(); store.set('cards', cards); openCards(card.id); };
   $('#cDel').onclick = () => {
     if (!confirm(t('「{0}」のカードを削除しますか', card.name))) return;
@@ -1938,10 +1946,23 @@ function afterLang() {
   closeSheet();
 }
 
+// ================= Unity連携 =================
+function launchNavi(cardId) {
+  console.log('trying to launch the navigation system...');
+  if (window.Unity) {
+    const card = cards.find(c => c.id === cardId);
+    const link = cardLink(card);
+    Unity.call(link);
+  }
+  else {
+    toast(t('ARナビはアプリ版でのみ利用可能です'));
+  }
+}
+
 // ================= 起動 =================
 Promise.all([
-  fetch('data/kumamoto_municipalities.geojson').then(r => r.json()),
-  fetch('data/shelters_kumamoto.json').then(r => r.json()),
+  Promise.resolve(JSON.parse(KUMAMOTO_MUNICIPALITIES)),  /*fetch('data/kumamoto_municipalities.geojson').then(r => r.json())*/
+  Promise.resolve(JSON.parse(SHELTERS_KUMAMOTO)),        /*fetch('data/shelters_kumamoto.json').then(r => r.json())*/
 ]).then(([g, sh]) => {
   munis = g.features; shelters = sh.items.filter(x => !x[5]); dirPoints = sh.items.filter(x => x[5]);
   muniLayer = L.geoJSON(g, { style: muniStyle, interactive: false }).addTo(map);
